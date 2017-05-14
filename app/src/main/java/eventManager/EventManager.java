@@ -39,12 +39,11 @@ public class EventManager {
      * if you want heavy process in {@link EventListener#receivedMessage(int, Object...)} use your thread
      */
 
-    private final String TAG = "EventManager";
+
 
     private static EventManager eventListenerInstance;
 
     private ErrorHandler errorHandler;
-    private boolean loggingInDebug;
     private ExecutorService threadPool;
     private SparseArray<List<EventListener>> eventListenerMap;
     private ReentrantLock eventLock = new ReentrantLock(true);
@@ -59,10 +58,10 @@ public class EventManager {
         eventListenerMap = new SparseArray<>();
 
         this.errorHandler = errorHandler;
-        this.loggingInDebug = loggingInDebug;
+        Logger.loggingInDebug = loggingInDebug;
 
         if (threadPoolSize > MAXIMUM_POOL_SIZE) {
-            printLog(String.format(Locale.getDefault(), "threadPoolSize is bigger than max threadPool size (%d)", MAXIMUM_POOL_SIZE), null);
+            Logger.printLog(String.format(Locale.getDefault(), "threadPoolSize is bigger than max threadPool size (%d)", MAXIMUM_POOL_SIZE), null);
             threadPoolSize = MAXIMUM_POOL_SIZE;
         }
 
@@ -81,7 +80,7 @@ public class EventManager {
     public void addEventListener(final int eventNum, final EventListener listener) {
 
         if (listener == null) {
-            printLog("listener is Null", null);
+            Logger.printLog("listener is Null", null);
             return;
         }
 
@@ -103,7 +102,7 @@ public class EventManager {
                     objects.add(listener);
                     eventListenerMap.put(eventNum, objects);
 
-                    printLog("addEventListener with eventNum = " + eventNum + ".\nNow " + objects.size() + " listener listen on this eventNum", null);
+                    Logger.printLog("addEventListener with eventNum = " + eventNum + ".\nNow " + objects.size() + " listener listen on this eventNum", null);
                 } finally {
                     eventLock.unlock();
                 }
@@ -115,7 +114,7 @@ public class EventManager {
 
         final List<EventListener> eventListeners = eventListenerMap.get(eventNum);
         if (eventListeners == null || eventListeners.size() == 0) {
-            printLog("eventListeners is null, there is no event with this eventNum = " + eventNum, null);
+            Logger.printLog("eventListeners is null, there is no event with this eventNum = " + eventNum, null);
             return;
         }
 
@@ -125,7 +124,7 @@ public class EventManager {
                 eventLock.lock();
                 try {
                     eventListeners.remove(listener);
-                    printLog("removeEvent for this eventNum = " + eventNum + ".\nNow " + eventListeners.size() + " listener listen on this eventNum", null);
+                    Logger.printLog("removeEvent for this eventNum = " + eventNum + ".\nNow " + eventListeners.size() + " listener listen on this eventNum", null);
                 } finally {
                     eventLock.unlock();
                 }
@@ -138,11 +137,11 @@ public class EventManager {
 
         final List<EventListener> eventListeners = eventListenerMap.get(eventNum);
         if (eventListeners == null || eventListeners.size() == 0) {
-            printLog("there is no listener for this eventNum = " + eventNum, null);
+            Logger.printLog("there is no listener for this eventNum = " + eventNum, null);
             return;
         }
 
-        printLog("postEvent for this eventNum = " + eventNum, null);
+        Logger.printLog("postEvent for this eventNum = " + eventNum, null);
 
         threadPool.submit(new Runnable() {
             @Override
@@ -154,7 +153,7 @@ public class EventManager {
                         try {
                             listener.receivedMessage(eventNum, message);
                         } catch (Exception e) {
-                            printLog("error happened in receiveMessage", e);
+                            Logger.printLog("error happened in receiveMessage", e);
                             if (errorHandler != null) {
                                 errorHandler.onFailure(e);
                             }
@@ -167,13 +166,7 @@ public class EventManager {
         });
     }
 
-    private void printLog(String message, Exception e) {
-        if (!BuildConfig.DEBUG || !loggingInDebug) {
-            return;
-        }
 
-        Log.d(TAG, message, e);
-    }
 
 
     public static class Builder {
